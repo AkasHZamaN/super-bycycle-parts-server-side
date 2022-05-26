@@ -21,13 +21,13 @@ const client = new MongoClient(uri, {
 });
 
 //verifyjwt
-function verifyJwt(req, res, next){
+function verifyJWT(req, res, next){
   const authHeader = req.headers.authorization;
   if(!authHeader){
-      return res.status(401).send({message: 'Unauthorized access'});
+      return res.status(401).send({message: 'UnAuthorized access'});
   }
   const token = authHeader.split(' ')[1];
-  jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, function(err, decoded) {
+  jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, function (err, decoded) {
       if(err){
           return res.status(403).send({message: 'Forbiddedn Access'})
       }
@@ -58,6 +58,21 @@ async function run() {
       const product = await productCollection.findOne(query);
       res.send(product);
     });
+
+    //delete order api get method
+    app.delete("/product/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: ObjectId(id) };
+      const product = await productCollection.findOne(query);
+      res.send(product);
+    });
+
+     // insert data client side and store data in database
+     app.post('/product', async (req, res)=>{
+      const newProduct = req.body;
+      const result = await productCollection.insertOne(newProduct);
+      res.send(result);
+  });
 
     //order collection api post method
     app.post("/order", async (req, res) => {
@@ -102,24 +117,43 @@ async function run() {
     });
 
 
-    app.put("/user/admin/:email", async (req, res) => {
+
+    app.put("/user/admin/:email", verifyJWT, async (req, res) => {
       const email = req.params.email;
-      
-      const filter = { email: email };
-      
+      const requester = req.decoded.email;
+      const requesterAccount = await userCollection.findOne({email: requester});
+      if(requesterAccount.role === 'admin'){
+
+        const filter = { email: email };
       const updatedoc = {
         $set: {role: 'admin'},
       };
       const result = await userCollection.updateOne(filter, updatedoc);
       res.send(result);
+
+      }
+      else{
+        res.status(403).send({message: 'forbidden'});
+      }
+
     });
 
 
     //all user api
-    app.get("/user",  async (req, res) => {
+    app.get('/user', async (req, res) => {
       const users = await userCollection.find().toArray();
       res.send(users);
     });
+
+
+    app.get('/admin/:email', async(req, res)=>{
+      const email = req.params.email;
+      const user = await userCollection.findOne({email: email});
+      const isAdmin = user.role === 'admin';
+      res.send({admin: isAdmin});
+    })
+
+
   } finally {
     // something write
   }
