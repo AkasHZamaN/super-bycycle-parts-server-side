@@ -23,6 +23,7 @@ async function run() {
   try {
     await client.connect();
     const productCollection = client.db("superBycycle").collection("product");
+    const orderCollection = client.db("superBycycle").collection('order');
 
     //get all product from databse
     app.get("/product", async (req, res) => {
@@ -40,6 +41,13 @@ async function run() {
         res.send(product);
         
     });
+
+    //order collection api post method
+    app.post('/order', async (req, res)=>{
+        const order = req.body;
+        const result = await orderCollection.insertOne(order);
+        res.send(result);
+    })
 
 
   } finally {
