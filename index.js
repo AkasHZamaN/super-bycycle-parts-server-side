@@ -1,7 +1,7 @@
 const express = require("express");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const cors = require("cors");
-const jwt = require('jsonwebtoken');
+const jwt = require("jsonwebtoken");
 const res = require("express/lib/response");
 require("dotenv").config();
 const app = express();
@@ -20,15 +20,28 @@ const client = new MongoClient(uri, {
   serverApi: ServerApiVersion.v1,
 });
 
+//verifyjwt
+function verifyJwt(req, res, next){
+  const authHeader = req.headers.authorization;
+  if(!authHeader){
+      return res.status(401).send({message: 'Unauthorized access'});
+  }
+  const token = authHeader.split(' ')[1];
+  jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, function(err, decoded) {
+      if(err){
+          return res.status(403).send({message: 'Forbiddedn Access'})
+      }
+      req.decoded = decoded;
+      next();
+  });
+}
+
 async function run() {
   try {
     await client.connect();
     const productCollection = client.db("superBycycle").collection("product");
-    const orderCollection = client.db("superBycycle").collection('order');
-    const userCollection = client.db("superBycycle").collection('users');
-
-    //AUTH
-    
+    const orderCollection = client.db("superBycycle").collection("order");
+    const userCollection = client.db("superBycycle").collection("users");
 
     //get all product from databse
     app.get("/product", async (req, res) => {
@@ -39,60 +52,74 @@ async function run() {
     });
 
     // get single product in the database
-    app.get('/product/:id', async(req, res)=>{
-        const id = req.params.id;
-        const query = {_id: ObjectId(id)};
-        const product = await productCollection.findOne(query);
-        res.send(product);
-        
+    app.get("/product/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: ObjectId(id) };
+      const product = await productCollection.findOne(query);
+      res.send(product);
     });
 
     //order collection api post method
-    app.post('/order', async (req, res)=>{
-        const order = req.body;
-        const result = await orderCollection.insertOne(order);
-        res.send(result);
-    })
+    app.post("/order", async (req, res) => {
+      const order = req.body;
+      const result = await orderCollection.insertOne(order);
+      res.send(result);
+    });
 
     //delete order api get method
-    app.delete('/order/:id', async (req, res)=>{
+    app.delete("/order/:id", async (req, res) => {
       const id = req.params.id;
-      const query = {_id: ObjectId(id)};
+      const query = { _id: ObjectId(id) };
       const cursor = orderCollection.find(query);
       const result = await cursor.toArray();
       res.send(result);
-  })
-
-    // get order collection in the database
-    app.get('/order', async(req, res)=>{
-        const email = req.query.email;
-        const query = {email: email};
-        const cursor = orderCollection.find(query);
-        const orders = await cursor.toArray();
-        res.send(orders);  
     });
 
-    app.put('/user/:email', async(req, res)=>{
+    // get order collection in the database
+    app.get("/order", async (req, res) => {
+      const email = req.query.email;
+      const query = { email: email };
+      const cursor = orderCollection.find(query);
+      const orders = await cursor.toArray();
+      res.send(orders);
+    });
+
+    app.put("/user/:email", async (req, res) => {
       const email = req.params.email;
-      const user =req.body;
-      const filter = {email: email};
-      const options = {upsert: true};
+      const user = req.body;
+      const filter = { email: email };
+      const options = { upsert: true };
       const updatedoc = {
         $set: user,
       };
       const result = await userCollection.updateOne(filter, updatedoc, options);
-      const token = jwt.sign({email: email}, process.env.ACCESS_TOKEN_SECRET, {expiresIn: '1h'} )
-      res.send({result, token});
+      const token = jwt.sign(
+        { email: email },
+        process.env.ACCESS_TOKEN_SECRET,
+        { expiresIn: "1h" }
+      );
+      res.send({ result, token });
     });
 
+
+    app.put("/user/admin/:email", async (req, res) => {
+      const email = req.params.email;
+      
+      const filter = { email: email };
+      
+      const updatedoc = {
+        $set: {role: 'admin'},
+      };
+      const result = await userCollection.updateOne(filter, updatedoc);
+      res.send(result);
+    });
+
+
     //all user api
-    app.get('/user', async(req, res)=>{
+    app.get("/user",  async (req, res) => {
       const users = await userCollection.find().toArray();
       res.send(users);
-    })
-    
-
-
+    });
   } finally {
     // something write
   }
