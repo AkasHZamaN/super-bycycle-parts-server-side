@@ -54,6 +54,15 @@ async function run() {
         res.send(result);
     })
 
+    //delete order api get method
+    app.delete('/order/:id', async (req, res)=>{
+      const id = req.params.id;
+      const query = {_id: ObjectId(id)};
+      const cursor = orderCollection.find(query);
+      const result = await cursor.toArray();
+      res.send(result);
+  })
+
     // get order collection in the database
     app.get('/order', async(req, res)=>{
         const email = req.query.email;
@@ -74,7 +83,14 @@ async function run() {
       const result = await userCollection.updateOne(filter, updatedoc, options);
       const token = jwt.sign({email: email}, process.env.ACCESS_TOKEN_SECRET, {expiresIn: '1h'} )
       res.send({result, token});
+    });
+
+    //all user api
+    app.get('/user', async(req, res)=>{
+      const users = await userCollection.find().toArray();
+      res.send(users);
     })
+    
 
 
   } finally {
