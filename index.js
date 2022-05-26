@@ -1,6 +1,7 @@
 const express = require("express");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const cors = require("cors");
+const jwt = require('jsonwebtoken');
 const res = require("express/lib/response");
 require("dotenv").config();
 const app = express();
@@ -24,6 +25,10 @@ async function run() {
     await client.connect();
     const productCollection = client.db("superBycycle").collection("product");
     const orderCollection = client.db("superBycycle").collection('order');
+    const userCollection = client.db("superBycycle").collection('users');
+
+    //AUTH
+    
 
     //get all product from databse
     app.get("/product", async (req, res) => {
@@ -47,6 +52,28 @@ async function run() {
         const order = req.body;
         const result = await orderCollection.insertOne(order);
         res.send(result);
+    })
+
+    // get order collection in the database
+    app.get('/order', async(req, res)=>{
+        const email = req.query.email;
+        const query = {email: email};
+        const cursor = orderCollection.find(query);
+        const orders = await cursor.toArray();
+        res.send(orders);  
+    });
+
+    app.put('/user/:email', async(req, res)=>{
+      const email = req.params.email;
+      const user =req.body;
+      const filter = {email: email};
+      const options = {upsert: true};
+      const updatedoc = {
+        $set: user,
+      };
+      const result = await userCollection.updateOne(filter, updatedoc, options);
+      const token = jwt.sign({email: email}, process.env.ACCESS_TOKEN_SECRET, {expiresIn: '1h'} )
+      res.send({result, token});
     })
 
 
