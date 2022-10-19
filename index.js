@@ -42,6 +42,7 @@ async function run() {
     const productCollection = client.db("superBycycle").collection("product");
     const orderCollection = client.db("superBycycle").collection("order");
     const userCollection = client.db("superBycycle").collection("users");
+    const reviewCollection = client.db("superBycycle").collection("reviews");
 
 
 
@@ -90,6 +91,21 @@ async function run() {
       res.send(result);
   });
 
+    // add review section 
+    app.post('/review', async (req, res)=>{
+      const addReview = req.body;
+      const newReview = await reviewCollection.insertOne(addReview);
+      res.send(newReview);
+    }),
+
+    // Get Review section
+    app.get('/review',async(req, res)=>{
+      const query = {};
+      const cursor = reviewCollection.find(query);
+      const allReview = await cursor.toArray();
+      res.send(allReview);
+    })
+
     //order collection api post method
     app.post("/order", async (req, res) => {
       const order = req.body;
@@ -106,7 +122,7 @@ async function run() {
       res.send(result);
     });
 
-    // get order collection in the database
+    // get order collection in the database (individual user)
     app.get("/order", async (req, res) => {
       const email = req.query.email;
       const query = { email: email };
